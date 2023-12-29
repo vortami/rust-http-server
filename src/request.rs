@@ -43,6 +43,12 @@ impl<'a> From<&'a str> for Body {
     }
 }
 
+impl From<String> for Body {
+    fn from(value: String) -> Self {
+        Self::Data(value)
+    }
+}
+
 impl TryFrom<TcpStream> for Request {
     type Error = RequestFromTcpStreamError;
 
@@ -52,7 +58,7 @@ impl TryFrom<TcpStream> for Request {
         let mut read_line = || {
             let mut buf = String::new();
             match reader.read_line(&mut buf) {
-                Ok(_) => {
+                Ok(..) => {
                     if buf.ends_with("\r\n") {
                         buf[..buf.len() - 2].to_string()
                     } else if buf.ends_with('\n') {
@@ -66,11 +72,19 @@ impl TryFrom<TcpStream> for Request {
         };
 
         let (method, (pathname, search)) = {
-            let line = read_line();
-            let mut line = line.split(' ');
+            let copy = read_line();
+            let mut line = copy.split(' ');
 
             (line.next().unwrap().parse::<Method>().unwrap(), {
-                let path = dbg!(line.next()).unwrap();
+                let path = line.next().unwrap_or_else(|| {
+                    println!(r#"ERROR: {{
+  "path is None"
+  {copy}
+}}"#);
+
+
+                    "/"
+                });
                 match path.split_once('?') {
                     Some((l, r)) => (
                         l.to_string(),
@@ -128,8 +142,6 @@ impl TryFrom<TcpStream> for Request {
 // }
 
 #[derive(Error, Debug)]
-pub enum RequestFromTcpStreamError {
-
-}
+pub enum RequestFromTcpStreamError {}
 
 unsafe impl Send for RequestFromTcpStreamError {}

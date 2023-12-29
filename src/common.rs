@@ -7,6 +7,8 @@ use std::{
     str::FromStr,
 };
 
+use crate::{request::Request, response::Response};
+
 #[allow(clippy::derive_ord_xor_partial_ord)]
 #[derive(Clone, Eq, Ord)]
 pub struct HeaderKey(String);
@@ -144,3 +146,5 @@ impl Deref for Search {
         &self.0
     }
 }
+
+pub type Handler = fn(&Request) -> Response;

@@ -4,7 +4,7 @@ use std::{
 };
 
 use crate::{
-    common::{Headers, HeadersBuilder},
+    common::{Headers, HeadersBuilder, HeaderKey},
     request::{Body, Request},
 };
 
@@ -61,10 +61,10 @@ pub struct Response {
 }
 
 impl Response {
-    pub fn respond_to(self, req: &mut Request) -> Result<()> {
+    pub fn respond_to_mut(self, req: &mut Request) -> Result<()> {
         write!(
             req,
-            "HTTP/1.1 {status}\n{headers}\n\n{body}",
+            "HTTP/1.1 {status}\n{headers}\n{body}",
             status = self.status,
             headers = self.headers,
             // TODO:
@@ -74,6 +74,10 @@ impl Response {
             }
         )
         .map(|_| ())
+    }
+
+    pub fn respond_to(self, mut req: Request) -> Result<()> {
+        self.respond_to_mut(&mut req)
     }
 
     pub fn status(&mut self, status: impl Into<Status>) {
@@ -124,6 +128,11 @@ impl ResponseBuilder {
     //     // (&mut self.headers).set(key, value);
     //     self
     // }
+
+    pub fn header(mut self, key: impl Into<HeaderKey>, value: impl ToString) -> Self {
+        self.headers.insert(key.into(), value.to_string());
+        self
+    }
 
     pub fn headers(mut self, headers_fn: fn(HeadersBuilder) -> HeadersBuilder) -> Self {
         self.headers = headers_fn(self.headers);
