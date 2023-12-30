@@ -2,8 +2,8 @@
 
 use crate::{
     common::{Handler, Method},
-    request::{Body, Request},
-    response::Response,
+    request::Request,
+    response::Response, handlers::not_found_handler_default,
 };
 use std::{
     collections::HashMap,
@@ -49,44 +49,55 @@ impl Hash for Route {
 
 #[derive(Default)]
 /// Simple server implementation
-pub struct Server {
-    routes: HashMap<Route, Arc<Box<Handler>>>,
-    not_found_handler: Option<Arc<Box<Handler>>>,
+pub struct Server<'a> {
+    routes: HashMap<Route, Arc<&'a Handler>>,
+    not_found_handler: Option<Arc<&'a Handler>>,
+}
+
+// wild.
+unsafe impl<'a> Sync for Server<'a> {}
+unsafe impl<'a> Send for Server<'a> {}
+
+macro_rules! method_impl {
+    ($($name: ident ($exact: ident) => $method: expr;)+) => {
+        $(
+            pub fn $name(mut self, path: impl ToString, handler: &'a Handler) -> Self {
+                self.routes.insert(
+                    Route {
+                        method: Some($method),
+                        path: path.to_string(),
+                        case_sensitive: false,
+                    },
+                    Arc::new(handler),
+                );
+                self
+            }
+
+            pub fn $exact(mut self, path: impl ToString, handler: &'a Handler) -> Self {
+                self.routes.insert(
+                    Route {
+                        method: Some($method),
+                        path: path.to_string(),
+                        case_sensitive: true,
+                    },
+                    Arc::new(handler),
+                );
+                self
+            }
+        )*
+    }
 }
 
 #[allow(missing_docs, dead_code)]
-impl Server {
+impl<'a> Server<'a> {
     /// Create a new Server
     pub fn new() -> Self {
         Default::default()
     }
 
-    pub fn route_sensitive(
-        mut self,
-        method: Method,
-        route: impl ToString,
-        handler: Box<Handler>,
-    ) -> Self {
-        self.routes.insert(
-            Route {
-                method: Some(method),
-                path: route.to_string(),
-                case_sensitive: true,
-            },
-            Arc::new(handler),
-        );
-    }
-
-    pub fn route(mut self, method: Method, route: impl ToString, handler: &Handler) -> Self {
-        self.routes.insert(
-            Route {
-                method: Some(method),
-                path: route.to_string(),
-                case_sensitive: false,
-            },
-            handler,
-        );
-        self
+    method_impl! {
+        get (get_exact) => Method::Get;
+        post (post_exact) => Method::Post;
     }
 
     pub fn serve(self, address: &str, port: u16) -> ! {
@@ -113,22 +124,22 @@ impl Server {
     }
 
     pub fn handle(&self, req: &Request) -> Response {
-        let not_found: &Handler = &self
-            .not_found_handler
-            .unwrap_or(|req| crate::handlers::not_found_handler_default(&req));
+        let handler = self.routes.iter().find_map(|(route, handler)| {
+            if route == &(req.method.clone(), req.pathname.clone()) {
+                Some(handler)
+            } else {
+                None
+            }
+        });
 
-        let handler: &Handler = self
-            .routes
-            .iter()
-            .find_map(|(route, handler)| {
-                if route == &(req.method.clone(), req.pathname.clone()) {
-                    Some(handler)
-                } else {
-                    None
+        match handler {
+            Some(handler) => handler(req),
+            None => {
+                match self.not_found_handler.as_ref() {
+                    Some(handler) => handler(req),
+                    None => not_found_handler_default(req),
                 }
-            })
-            .unwrap_or(not_found);
-
-        handler(req)
+            }
+        }
     }
 }

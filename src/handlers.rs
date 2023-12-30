@@ -1,14 +1,21 @@
 //! Default handlers for [`Server`](crate::server::Server)
 
 use crate::{
+    mime_types::MimeType,
     request::{Body, Request},
     response::Response,
 };
 use std::path::Path;
 
+/// The way directories should be indexed
 pub enum IndexStyle {
+    /// Show a 404 Not Found error
     NotFound,
+    /// List all the files in the directory
     IndexDirectory,
+    /// Return the file at this path (relative) instead
+    ///
+    /// Usually set to `index.html`
     IndexFile(String),
 }
 
@@ -26,12 +33,15 @@ pub(crate) fn not_found_handler_default(_: &Request) -> Response {
         .build()
 }
 
-pub fn fs_handler(directory: &str) -> Handler {
-    const DIR: &str = "./public/";
-    |req| {
+/// Default handler for the filesystem
+pub fn fs_handler(directory: &str, index_style: IndexStyle) -> Box<Handler> {
+    let directory = directory.to_string();
+    Box::new(move |req| {
+        let directory = directory.as_str();
+
         assert!(req.pathname.starts_with('/'));
 
-        let path = Path::new(DIR).join(String::from(".") + req.pathname.clone().as_str());
+        let path = Path::new(directory).join(String::from(".") + req.pathname.clone().as_str());
 
         if !path.exists() {
             Response::builder().status(404).build()
@@ -46,7 +56,7 @@ pub fn fs_handler(directory: &str) -> Handler {
                 _ => Response::builder().status(500).build(),
             }
         } else if path.is_dir() {
-            match *INDEX_STYLE.read().expect("failed to get index style") {
+            match index_style {
                 IndexStyle::IndexDirectory => match std::fs::read_dir(path) {
                     Ok(files) => {
                         let files = files
@@ -88,5 +98,5 @@ pub fn fs_handler(directory: &str) -> Handler {
         } else {
             unreachable!()
         }
-    }
+    })
 }
