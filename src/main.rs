@@ -12,7 +12,7 @@ enum IndexStyle {
     IndexFile(String),
 }
 
-static mut INDEX_STYLE: RwLock<IndexStyle> = RwLock::new(IndexStyle::IndexDirectory);
+static INDEX_STYLE: RwLock<IndexStyle> = RwLock::new(IndexStyle::IndexDirectory);
 
 fn main() -> Result<(), Box<dyn Error>> {
     let mut args = std::env::args().skip(1);
@@ -36,7 +36,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 .next()
                 .expect("index style missing: (dir | [filename] | none)");
 
-            *(unsafe { INDEX_STYLE.write() }).expect("failed to get write lock") = {
+            *INDEX_STYLE.write().expect("failed to get write lock") = {
                 match is.to_lowercase().as_str() {
                     "dir" => IndexStyle::IndexDirectory,
                     "none" => IndexStyle::NotFound,
@@ -130,7 +130,7 @@ fn handler(req: &Request) -> Response {
             _ => Response::builder().status(500).build(),
         }
     } else if path.is_dir() {
-        match *(unsafe { INDEX_STYLE.read() }).expect("failed to get index style") {
+        match *INDEX_STYLE.read().expect("failed to get index style") {
             IndexStyle::IndexDirectory => match std::fs::read_dir(path) {
                 Ok(files) => {
                     let files = files
