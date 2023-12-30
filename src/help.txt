@@ -1,0 +1,10 @@
+{bin} - 2023 vortami
+
+Arguments:
+	--port (-p)                   Specify the port
+	--open (-o)                   Open the server to the network
+	--index-style (--index, -i)   Specify what happens when a directory is accessed
+	                                one of: dir, none, [filename]
+	--dir (-d)                    Specify what directory is served
+	                                (default: `./public`)
+	--help (-h)                   Display this page

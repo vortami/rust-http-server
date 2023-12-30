@@ -60,6 +60,12 @@ fn main() -> Result<(), Box<dyn Error>> {
             }
 
             *DIR.write().expect("could not get write lock") = dir;
+        } else if arg == "--help" || arg == "-h" {
+            eprint!(
+                include_str!("./help.txt"),
+                bin = std::env::args().next().unwrap().split('/').last().unwrap(),
+            );
+            std::process::exit(0);
         } else {
             eprintln!("argument not recognized: {arg:?}")
         }
