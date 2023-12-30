@@ -1,22 +1,26 @@
+//! All functions relating to responses
+
+use crate::{
+    common::{HeaderKey, Headers, HeadersBuilder},
+    request::{Body, Request},
+};
 use std::{
     fmt::Display,
     io::{Result, Write},
 };
 
-use crate::{
-    common::{Headers, HeadersBuilder, HeaderKey},
-    request::{Body, Request},
-};
-
+/// Status Code/Message pair
 pub struct Status {
+    /// Code of the status
     pub code: u16,
+    /// Message of the status
     pub message: Option<String>,
 }
 
 impl From<u16> for Status {
     fn from(code: u16) -> Self {
         Self {
-            code: code.into(),
+            code,
             message: match code {
                 200 => Some("Ok"),
                 204 => Some("No Content"),
@@ -54,20 +58,25 @@ impl Display for Status {
         })
     }
 }
+
+/// Response structure
 pub struct Response {
+    /// Status of the response
     pub status: Status,
+    /// Headers of the response
     pub headers: Headers,
+    /// Body of the response
     pub body: Body,
 }
 
 impl Response {
+    /// Same as `.respond_to()`, except it borrows [`Request`]
     pub fn respond_to_mut(self, req: &mut Request) -> Result<()> {
         write!(
             req,
             "HTTP/1.1 {status}\n{headers}\n{body}",
             status = self.status,
             headers = self.headers,
-            // TODO:
             body = match self.body {
                 Body::Data(d) => d,
                 Body::Empty => String::new(),
@@ -76,14 +85,12 @@ impl Response {
         .map(|_| ())
     }
 
+    /// Respond to a [`Request`]
     pub fn respond_to(self, mut req: Request) -> Result<()> {
         self.respond_to_mut(&mut req)
     }
 
-    pub fn status(&mut self, status: impl Into<Status>) {
-        self.status = status.into()
-    }
-
+    /// Get the [`ResponseBuilder`]
     pub fn builder() -> ResponseBuilder {
         ResponseBuilder {
             status: None,
@@ -93,6 +100,7 @@ impl Response {
     }
 }
 
+/// Builder for [`Response`]
 pub struct ResponseBuilder {
     status: Option<Status>,
     headers: HeadersBuilder,
@@ -100,50 +108,55 @@ pub struct ResponseBuilder {
 }
 
 impl ResponseBuilder {
+    /// Set the status of the response
     pub fn status(mut self, status: impl Into<Status>) -> Self {
         self.status = Some(status.into());
         self
     }
 
-    // pub fn status(mut self, code: u16, message: impl ToString) -> Self {
-    //     self.status = Some(Status {
-    //         code,
-    //         message: Some(message.to_string()),
-    //     });
-    //     self
-    // }
-
-    // pub fn status_code(mut self, code: u16) -> Self {
-    //     self.status = match self.status {
-    //         Some(Status { message, .. }) => Some(Status { code, message }),
-    //         None => Some(Status {
-    //             code,
-    //             message: None,
-    //         }),
-    //     };
-    //     self
-    // }
-
-    // pub fn header(mut self, key: impl Into<HeaderKey>, value: impl ToString) -> Self {
-    //     // (&mut self.headers).set(key, value);
-    //     self
-    // }
-
+    /// Set a single header
     pub fn header(mut self, key: impl Into<HeaderKey>, value: impl ToString) -> Self {
         self.headers.insert(key.into(), value.to_string());
         self
     }
 
-    pub fn headers(mut self, headers_fn: fn(HeadersBuilder) -> HeadersBuilder) -> Self {
+    /// Set multiple headers
+    /// 
+    /// # Examples
+    /// ```
+    /// # use rust_http_server::response::Response;
+    /// Response::builder()
+    ///     .headers(|headers| headers
+    ///         .set("foo", "bar")
+    ///         .set("baz", "123")
+    ///     );
+    /// ```
+    /// ```
+    /// # use rust_http_server::response::Response;
+    /// let builder = Response::builder();
+    /// let vec = vec![("Content-Type", "application/json"), ("Content-Length", "1024")];
+    /// 
+    /// Response::builder()
+    ///     .headers(|header| vec.iter().fold(header, |headers, (k, v)| {
+    ///         headers.set(k, v)
+    ///     }));
+    /// ```
+    pub fn headers(mut self, headers_fn: impl Fn(HeadersBuilder) -> HeadersBuilder) -> Self {
         self.headers = headers_fn(self.headers);
         self
     }
 
+
+    /// Set the body of the response.
+    ///
+    /// `body` can be `()` or anything that implements [`ToString`]
     pub fn body(mut self, body: impl Into<Body>) -> Self {
         self.body = body.into();
         self
     }
 
+
+    /// Construct a [`Response`]
     pub fn build(self) -> Response {
         Response {
             body: self.body,

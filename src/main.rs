@@ -1,6 +1,6 @@
-mod macros;
-
-use rust_http_server::{mime_types::MimeType, request::Request, response::Response};
+use rust_http_server::{
+    mime_types::MimeType, request::Request, response::Response,
+};
 use std::{
     error::Error, io::BufRead, net::TcpListener, num::IntErrorKind, path::Path, sync::RwLock,
     thread,
@@ -119,34 +119,32 @@ fn handler(req: &Request) -> Response {
 
     if !path.exists() {
         Response::builder().status(404).build()
-    } else {
-        if path.is_file() {
-            let mime_type = MimeType::get_for_path(&req.pathname);
-            match std::fs::read(path).map(|file| String::from_utf8(file)) {
-                Ok(Ok(file)) => Response::builder()
-                    .status(200)
-                    .header("Content-Type", mime_type)
-                    .body(file)
-                    .build(),
-                _ => Response::builder().status(500).build(),
-            }
-        } else if path.is_dir() {
-            match *(unsafe { INDEX_STYLE.read() }).expect("failed to get index style") {
-                IndexStyle::IndexDirectory => match std::fs::read_dir(path) {
-                    Ok(files) => {
-                        let files = files
-                            .filter_map(|file| Some(file.ok()?.file_name().to_str()?.to_string()))
-                            .fold(String::new(), |mut out, name| {
-                                out +=
-                                    format!(r#"<li><a href="./{name}">{name}</a></li>"#).as_str();
-                                out
-                            });
+    } else if path.is_file() {
+        let mime_type = MimeType::get_for_path(&req.pathname);
+        match std::fs::read(path).map(String::from_utf8) {
+            Ok(Ok(file)) => Response::builder()
+                .status(200)
+                .header("Content-Type", mime_type)
+                .body(file)
+                .build(),
+            _ => Response::builder().status(500).build(),
+        }
+    } else if path.is_dir() {
+        match *(unsafe { INDEX_STYLE.read() }).expect("failed to get index style") {
+            IndexStyle::IndexDirectory => match std::fs::read_dir(path) {
+                Ok(files) => {
+                    let files = files
+                        .filter_map(|file| Some(file.ok()?.file_name().to_str()?.to_string()))
+                        .fold(String::new(), |mut out, name| {
+                            out += format!(r#"<li><a href="./{name}">{name}</a></li>"#).as_str();
+                            out
+                        });
 
-                        Response::builder()
-                            .status(200)
-                            .header("Content-Type", "text/html")
-                            .body(format!(
-                                r#"<!DOCTYPE html>
+                    Response::builder()
+                        .status(200)
+                        .header("Content-Type", "text/html")
+                        .body(format!(
+                            r#"<!DOCTYPE html>
 <html lang="en" dir="ltr">
 <head>
     <title>Index of {pathname}</title>
@@ -158,22 +156,19 @@ fn handler(req: &Request) -> Response {
 </body>
 </html>
 "#,
-                                pathname = req.pathname
-                            ))
-                            .build()
-                    }
-                    Err(..) => Response::builder().status(500).build(),
-                },
-                IndexStyle::NotFound => {
-                    Response::builder().status(404).build()
+                            pathname = req.pathname
+                        ))
+                        .build()
                 }
-                IndexStyle::IndexFile(..) => {
-                    // TODO:
-                    Response::builder().status(500).build()
-                },
+                Err(..) => Response::builder().status(500).build(),
+            },
+            IndexStyle::NotFound => Response::builder().status(404).build(),
+            IndexStyle::IndexFile(..) => {
+                // TODO:
+                Response::builder().status(500).build()
             }
-        } else {
-            unreachable!()
         }
+    } else {
+        unreachable!()
     }
 }

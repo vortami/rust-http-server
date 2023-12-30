@@ -1,4 +1,4 @@
-#![allow(dead_code, unused_variables)]
+#![allow(missing_docs, dead_code, unused_variables)]
 
 use crate::request::Request;
 

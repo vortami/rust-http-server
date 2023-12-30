@@ -1,3 +1,5 @@
+//! Mime type detection based on filename
+
 fn last_two<T, I: Iterator<Item = T>>(mut iter: I) -> (Option<T>, Option<T>) {
     let mut a = None;
     let mut b = None;
@@ -19,18 +21,24 @@ fn get_file_extension(path: &str) -> Option<String> {
     let path = path.split('/').last()?;
     let split = path.split('.');
 
-    // hack: i can't `.rev()` the result of `.take_while()`, so instead i
-    // collect it into a Vec and then `.rev()` it's `.iter()`
-
-    let (a, b) = dbg!(last_two(split));
+    let (a, b) = last_two(split);
     a.and(b).map(|s| s.to_string())
 }
 
-
 // should i use a struct or a mod here?
+/// util for mime types
 pub struct MimeType;
 
 impl MimeType {
+    /// get the mime type based on file extension
+    /// 
+    /// # Examples
+    /// ```
+    /// # use rust_http_server::mime_types::MimeType;
+    /// assert_eq!(MimeType::get_for_path("txt"), "text/plain");
+    /// assert_eq!(MimeType::get_for_path("html"), "text/html");
+    /// assert_eq!(MimeType::get_for_path("png"), "image/png");
+    /// ```
     pub fn get_for_extension(ext: &str) -> String {
         match ext.to_lowercase().as_str() {
             // image
@@ -45,7 +53,14 @@ impl MimeType {
         }
         .to_string()
     }
-
+    
+    /// get the mime type based on file path
+    /// 
+    /// # Examples
+    /// ```
+    /// # use rust_http_server::mime_types::MimeType;
+    /// assert_eq!(MimeType::get_for_extension("./relative/file.png"), "image/png");
+    /// ```
     pub fn get_for_path(path: &str) -> String {
         let ext = match get_file_extension(path) {
             Some(ext) => ext,

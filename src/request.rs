@@ -1,16 +1,23 @@
+//! All functions relating to requests
+
 use crate::common::{Headers, Method, Search};
 use std::{
     collections::HashMap,
     io::{BufRead, BufReader, Read, Write},
     net::TcpStream,
 };
-use thiserror::Error;
 
+/// Request structure
 pub struct Request {
+    /// Method of the request
     pub method: Method,
+    /// Pathname of the request
     pub pathname: String,
+    /// Search string of the request
     pub search: Search,
+    /// Headers of the request
     pub headers: Headers,
+    /// Body of the request
     pub body: Body,
     pub(crate) stream: TcpStream,
 }
@@ -25,10 +32,31 @@ impl Write for Request {
     }
 }
 
+/// Body for [`Request`]/[`Response`] 
 pub enum Body {
+    /// Body has data
     Data(String),
     // #[cfg(feature = "streamed_response")] Streamed(TcpStream),
+    /// Body has no data
     Empty,
+}
+
+impl Body {
+    /// Get the length of the body (`0` if [`Body::Empty`])
+    pub fn len(&self) -> usize {
+        match self {
+            Self::Data(data) => data.len(),
+            Self::Empty => 0,
+        }
+    }
+
+    /// Check if the body is empty
+    pub fn is_empty(&self) -> bool {
+        match self {
+            Self::Data(data) => data.len() == 0,
+            Self::Empty => true,
+        }
+    }
 }
 
 impl From<()> for Body {
@@ -50,7 +78,7 @@ impl From<String> for Body {
 }
 
 impl TryFrom<TcpStream> for Request {
-    type Error = RequestFromTcpStreamError;
+    type Error = std::convert::Infallible;
 
     fn try_from(value: TcpStream) -> Result<Self, Self::Error> {
         let mut reader = BufReader::new(value);
@@ -77,11 +105,12 @@ impl TryFrom<TcpStream> for Request {
 
             (line.next().unwrap().parse::<Method>().unwrap(), {
                 let path = line.next().unwrap_or_else(|| {
-                    println!(r#"ERROR: {{
+                    println!(
+                        r#"ERROR: {{
   "path is None"
   {copy}
-}}"#);
-
+}}"#
+                    );
 
                     "/"
                 });
@@ -136,12 +165,3 @@ impl TryFrom<TcpStream> for Request {
         })
     }
 }
-
-// convert_err_to! {
-//     RequestFromTcpStreamError <- Infallible
-// }
-
-#[derive(Error, Debug)]
-pub enum RequestFromTcpStreamError {}
-
-unsafe impl Send for RequestFromTcpStreamError {}

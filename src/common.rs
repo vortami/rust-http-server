@@ -1,3 +1,5 @@
+//! Shared structs for [`Request`] and [`Response`]
+
 use std::{
     collections::HashMap,
     convert::Infallible,
@@ -9,8 +11,8 @@ use std::{
 
 use crate::{request::Request, response::Response};
 
-#[allow(clippy::derive_ord_xor_partial_ord)]
-#[derive(Clone, Eq, Ord)]
+#[derive(Clone, Eq)]
+/// Key used to index [`Headers`], can be created easily by calling `.into()` on anything that implements [`ToString`]
 pub struct HeaderKey(String);
 
 impl PartialEq for HeaderKey {
@@ -21,7 +23,13 @@ impl PartialEq for HeaderKey {
 
 impl PartialOrd for HeaderKey {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        self.0.to_lowercase().partial_cmp(&other.to_lowercase())
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for HeaderKey {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.0.to_lowercase().cmp(&other.to_lowercase())
     }
 }
 
@@ -44,13 +52,16 @@ impl<T: ToString> From<T> for HeaderKey {
     }
 }
 
+/// Header key-value map
 pub struct Headers(HashMap<HeaderKey, String>);
 
 impl Headers {
+    /// Get a header's value, `key` is case insensitive
     pub fn get(&self, key: impl Into<HeaderKey>) -> Option<&String> {
         self.0.get(&key.into())
     }
 
+    /// Get the [`HeadersBuilder`]
     pub fn builder() -> HeadersBuilder {
         HeadersBuilder::new()
     }
@@ -75,17 +86,21 @@ impl Display for Headers {
     }
 }
 
+
+/// Builder for [`Headers`]. Derefs into [`HashMap<HeaderKey, String>`]
 pub struct HeadersBuilder(HashMap<HeaderKey, String>);
 impl HeadersBuilder {
     fn new() -> Self {
         Self(HashMap::new())
     }
 
+    /// Set `key` to `value`
     pub fn set(mut self, key: impl Into<HeaderKey>, value: impl ToString) -> Self {
         self.0.insert(key.into(), value.to_string());
         self
     }
 
+    /// Construct [`Headers`]
     pub fn build(self) -> Headers {
         Headers(self.0)
     }
@@ -104,9 +119,14 @@ impl DerefMut for HeadersBuilder {
     }
 }
 
+#[derive(PartialEq, Eq, Clone)]
+/// HTTP Methods
 pub enum Method {
+    /// GET
     Get,
+    /// POST
     Post,
+    /// Used for custom methods
     Other(String),
 }
 
@@ -123,6 +143,7 @@ impl FromStr for Method {
 }
 
 #[derive(Debug, Default)]
+/// URL Search Params
 pub struct Search(HashMap<String, String>);
 
 impl FromStr for Search {
@@ -147,4 +168,5 @@ impl Deref for Search {
     }
 }
 
-pub type Handler = fn(&Request) -> Response;
+/// structure of a handler
+pub type Handler = fn(req: &Request) -> Response;
