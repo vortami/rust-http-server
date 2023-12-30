@@ -4,6 +4,7 @@
 #![warn(missing_docs)]
 
 pub mod common;
+pub mod handlers;
 pub mod mime_types;
 pub mod request;
 pub mod response;

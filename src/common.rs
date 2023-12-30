@@ -1,4 +1,4 @@
-//! Shared structs for [`Request`] and [`Response`]
+//! Shared structs for [`Request`](crate::request::Request) and [`Response`](crate::response::Response)
 
 use std::{
     collections::HashMap,
@@ -8,8 +8,6 @@ use std::{
     ops::{Deref, DerefMut},
     str::FromStr,
 };
-
-use crate::{request::Request, response::Response};
 
 #[derive(Clone, Eq)]
 /// Key used to index [`Headers`], can be created easily by calling `.into()` on anything that implements [`ToString`]
@@ -168,5 +166,5 @@ impl Deref for Search {
     }
 }
 
-/// structure of a handler
-pub type Handler = fn(req: &Request) -> Response;
+#[deprecated = "use ::handlers::Handler instead"]
+pub use crate::handlers::Handler;

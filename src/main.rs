@@ -1,16 +1,10 @@
 use rust_http_server::{
-    mime_types::MimeType, request::Request, response::Response,
+    handlers::IndexStyle, mime_types::MimeType, request::Request, response::Response,
 };
 use std::{
     error::Error, io::BufRead, net::TcpListener, num::IntErrorKind, path::Path, sync::RwLock,
     thread,
 };
-
-enum IndexStyle {
-    NotFound,
-    IndexDirectory,
-    IndexFile(String),
-}
 
 static INDEX_STYLE: RwLock<IndexStyle> = RwLock::new(IndexStyle::IndexDirectory);
 

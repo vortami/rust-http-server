@@ -8,6 +8,7 @@ use crate::{
 use std::{
     collections::HashMap,
     hash::{Hash, Hasher},
+    sync::Arc,
     thread,
 };
 
@@ -49,19 +50,8 @@ impl Hash for Route {
 #[derive(Default)]
 /// Simple server implementation
 pub struct Server {
-    routes: HashMap<Route, Handler>,
-    not_found_handler: Option<Handler>,
-}
-
-fn not_found_handler_default(_: &Request) -> Response {
-    let body = Body::Data(include_str!("./default_pages/404.html").to_string());
-
-    Response::builder()
-        .status(404)
-        .header("Content-Type", "text/html")
-        .header("Content-Length", body.len())
-        .body(body)
-        .build()
+    routes: HashMap<Route, Arc<Box<Handler>>>,
+    not_found_handler: Option<Arc<Box<Handler>>>,
 }
 
 #[allow(missing_docs, dead_code)]
@@ -75,7 +65,7 @@ impl Server {
         mut self,
         method: Method,
         route: impl ToString,
-        handler: Handler,
+        handler: Box<Handler>,
     ) -> Self {
         self.routes.insert(
             Route {
@@ -83,12 +73,11 @@ impl Server {
                 path: route.to_string(),
                 case_sensitive: true,
             },
-            handler,
+            Arc::new(handler),
         );
-        self
     }
 
-    pub fn route(mut self, method: Method, route: impl ToString, handler: Handler) -> Self {
+    pub fn route(mut self, method: Method, route: impl ToString, handler: &Handler) -> Self {
         self.routes.insert(
             Route {
                 method: Some(method),
@@ -113,7 +102,9 @@ impl Server {
                         .try_into()
                         .expect("failed to parse request");
 
-                    self.handle(&req).respond_to(req).expect("failed to send response");
+                    self.handle(&req)
+                        .respond_to(req)
+                        .expect("failed to send response");
                 });
             }
         });
@@ -122,15 +113,21 @@ impl Server {
     }
 
     pub fn handle(&self, req: &Request) -> Response {
-        let not_found: &Handler = &self.not_found_handler.unwrap_or(not_found_handler_default);
+        let not_found: &Handler = &self
+            .not_found_handler
+            .unwrap_or(|req| crate::handlers::not_found_handler_default(&req));
 
-        let handler: &Handler = self.routes.iter().find_map(|(route, handler)| {
-            if route == &(req.method.clone(), req.pathname.clone()) {
-                Some(handler)
-            } else {
-                None
-            }
-        }).unwrap_or(not_found);
+        let handler: &Handler = self
+            .routes
+            .iter()
+            .find_map(|(route, handler)| {
+                if route == &(req.method.clone(), req.pathname.clone()) {
+                    Some(handler)
+                } else {
+                    None
+                }
+            })
+            .unwrap_or(not_found);
 
         handler(req)
     }
