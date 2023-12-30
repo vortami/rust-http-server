@@ -10,9 +10,14 @@ use std::{
 };
 
 static INDEX_STYLE: RwLock<IndexStyle> = RwLock::new(IndexStyle::IndexDirectory);
+static DIR: RwLock<String> = RwLock::new(String::new());
 
 fn main() -> Result<(), Box<dyn Error>> {
     let mut args = std::env::args().skip(1);
+
+    // default is set here because `.to_string()` is not const
+    *DIR.write().unwrap() = "./public/".to_string();
+    // calling unwrap here is safe because the lock has not had time to be poisoned yet
 
     let mut port = 8080;
     let mut external = false;
@@ -40,6 +45,21 @@ fn main() -> Result<(), Box<dyn Error>> {
                     _ => IndexStyle::IndexFile(is),
                 }
             }
+        } else if arg == "--dir" || arg == "-d" {
+            let dir = args.next().expect("dir not provided");
+
+            {
+                let path = Path::new(&dir);
+                if !path.exists() {
+                    eprintln!("The provided path does not exist.");
+                    std::process::exit(1);
+                } else if !path.is_dir() {
+                    eprintln!("The provided path is not a directory.");
+                    std::process::exit(1);
+                }
+            }
+
+            *DIR.write().expect("could not get write lock") = dir;
         } else {
             eprintln!("argument not recognized: {arg:?}")
         }
@@ -112,7 +132,8 @@ const DIR: &str = "./public/";
 fn handler(req: &Request) -> Response {
     assert!(req.pathname.starts_with('/'));
 
-    let path = Path::new(DIR).join(String::from(".") + req.pathname.clone().as_str());
+    let path =
+        Path::new(&*DIR.read().unwrap()).join(String::from(".") + req.pathname.clone().as_str());
 
     if !path.exists() {
         not_found_handler_default(req)
@@ -130,12 +151,36 @@ fn handler(req: &Request) -> Response {
         match *INDEX_STYLE.read().expect("failed to get index style") {
             IndexStyle::IndexDirectory => match std::fs::read_dir(path) {
                 Ok(files) => {
-                    let files = files
-                        .filter_map(|file| Some(file.ok()?.file_name().to_str()?.to_string()))
-                        .fold(String::new(), |mut out, name| {
-                            out += format!(r#"<li><a href="./{name}">{name}</a></li>"#).as_str();
-                            out
-                        });
+                    let mut files = files
+                        .filter_map(|file| {
+                            // Some(file.ok()?.file_name().to_str()?.to_string())
+                            file.ok().map(|s| {
+                                (
+                                    s.path().is_dir(),
+                                    s.file_name().to_str().unwrap().to_string(),
+                                )
+                            })
+                        })
+                        .collect::<Vec<_>>();
+
+                    files.sort_by(|(a, a_name), (b, b_name)| {
+                        use std::cmp::Ordering as O;
+                        match (*a, *b) {
+                            (true, false) => O::Less,
+                            (false, true) => O::Greater,
+                            _ => a_name.cmp(b_name),
+                        }
+                    });
+
+                    let files = files.iter().fold(String::new(), |mut out, (is_dir, name)| {
+                        out += format!(
+                            r#"<li><a href="./{name}{trailing}">{name}{trailing}</a></li>"#,
+                            trailing = if *is_dir { "/" } else { "" }
+                        )
+                        .as_str();
+
+                        out
+                    });
 
                     Response::builder()
                         .status(200)
