@@ -2,8 +2,9 @@
 
 use crate::{
     common::{Handler, Method},
+    handlers::not_found_handler_default,
     request::Request,
-    response::Response, handlers::not_found_handler_default,
+    response::Response,
 };
 use std::{
     collections::HashMap,
@@ -100,6 +101,14 @@ impl<'a> Server<'a> {
         post (post_exact) => Method::Post;
     }
 
+    /// Can be used as a 404, but it's also repurposable as a catch-all!
+    ///
+    /// Using this while not matching on anything else will catch every incoming request.
+    pub fn not_found(mut self, handler: &'a Handler) -> Self {
+        self.not_found_handler = Some(Arc::new(handler));
+        self
+    }
+
     pub fn serve(self, address: &str, port: u16) -> ! {
         use std::net::TcpListener;
 
@@ -134,12 +143,10 @@ impl<'a> Server<'a> {
 
         match handler {
             Some(handler) => handler(req),
-            None => {
-                match self.not_found_handler.as_ref() {
-                    Some(handler) => handler(req),
-                    None => not_found_handler_default(req),
-                }
-            }
+            None => match self.not_found_handler.as_ref() {
+                Some(handler) => handler(req),
+                None => not_found_handler_default(req),
+            },
         }
     }
 }
