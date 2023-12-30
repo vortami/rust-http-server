@@ -1,5 +1,8 @@
 use rust_http_server::{
-    handlers::IndexStyle, mime_types::MimeType, request::Request, response::Response,
+    handlers::{not_found_handler_default, IndexStyle},
+    mime_types::MimeType,
+    request::Request,
+    response::Response,
 };
 use std::{
     error::Error, io::BufRead, net::TcpListener, num::IntErrorKind, path::Path, sync::RwLock,
@@ -112,7 +115,7 @@ fn handler(req: &Request) -> Response {
     let path = Path::new(DIR).join(String::from(".") + req.pathname.clone().as_str());
 
     if !path.exists() {
-        Response::builder().status(404).build()
+        not_found_handler_default(req)
     } else if path.is_file() {
         let mime_type = MimeType::get_for_path(&req.pathname);
         match std::fs::read(path).map(String::from_utf8) {
@@ -156,10 +159,23 @@ fn handler(req: &Request) -> Response {
                 }
                 Err(..) => Response::builder().status(500).build(),
             },
-            IndexStyle::NotFound => Response::builder().status(404).build(),
-            IndexStyle::IndexFile(..) => {
-                // TODO:
-                Response::builder().status(500).build()
+            IndexStyle::NotFound => not_found_handler_default(req),
+            IndexStyle::IndexFile(ref filename) => {
+                let path = path.join(format!("{filename}"));
+
+                if path.exists() && path.is_file() {
+                    let mime_type = MimeType::get_for_path(&path.to_str().unwrap_or(".txt"));
+                    match std::fs::read(path).map(String::from_utf8) {
+                        Ok(Ok(file)) => Response::builder()
+                            .status(200)
+                            .header("Content-Type", mime_type)
+                            .body(file)
+                            .build(),
+                        _ => Response::builder().status(500).build(),
+                    }
+                } else {
+                    not_found_handler_default(req)
+                }
             }
         }
     } else {

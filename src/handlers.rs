@@ -22,7 +22,8 @@ pub enum IndexStyle {
 /// structure of a handler
 pub type Handler = dyn Fn(&Request) -> Response;
 
-pub(crate) fn not_found_handler_default(_: &Request) -> Response {
+/// Default implementation for a 404 page.
+pub fn not_found_handler_default(_: &Request) -> Response {
     let body = Body::Data(include_str!("./default_pages/404.html").to_string());
 
     Response::builder()
