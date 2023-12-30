@@ -31,7 +31,7 @@ pub struct MimeType;
 
 impl MimeType {
     /// get the mime type based on file extension
-    /// 
+    ///
     /// # Examples
     /// ```
     /// # use rust_http_server::mime_types::MimeType;
@@ -53,9 +53,9 @@ impl MimeType {
         }
         .to_string()
     }
-    
+
     /// get the mime type based on file path
-    /// 
+    ///
     /// # Examples
     /// ```
     /// # use rust_http_server::mime_types::MimeType;

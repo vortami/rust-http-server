@@ -84,7 +84,6 @@ impl Display for Headers {
     }
 }
 
-
 /// Builder for [`Headers`]. Derefs into [`HashMap<HeaderKey, String>`]
 pub struct HeadersBuilder(HashMap<HeaderKey, String>);
 impl HeadersBuilder {

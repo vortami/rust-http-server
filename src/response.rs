@@ -121,7 +121,7 @@ impl ResponseBuilder {
     }
 
     /// Set multiple headers
-    /// 
+    ///
     /// # Examples
     /// ```
     /// # use rust_http_server::response::Response;
@@ -135,7 +135,7 @@ impl ResponseBuilder {
     /// # use rust_http_server::response::Response;
     /// let builder = Response::builder();
     /// let vec = vec![("Content-Type", "application/json"), ("Content-Length", "1024")];
-    /// 
+    ///
     /// Response::builder()
     ///     .headers(|header| vec.iter().fold(header, |headers, (k, v)| {
     ///         headers.set(k, v)
@@ -146,7 +146,6 @@ impl ResponseBuilder {
         self
     }
 
-
     /// Set the body of the response.
     ///
     /// `body` can be `()` or anything that implements [`ToString`]
@@ -154,7 +153,6 @@ impl ResponseBuilder {
         self.body = body.into();
         self
     }
-
 
     /// Construct a [`Response`]
     pub fn build(self) -> Response {

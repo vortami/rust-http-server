@@ -32,7 +32,7 @@ impl Write for Request {
     }
 }
 
-/// Body for [`Request`]/[`Response`] 
+/// Body for [`Request`]/[`Response`]
 pub enum Body {
     /// Body has data
     Data(String),
