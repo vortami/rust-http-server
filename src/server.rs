@@ -98,6 +98,12 @@ impl<'a> Server<'a> {
     method_impl! {
         get (get_exact) => Method::Get;
         post (post_exact) => Method::Post;
+        put (put_exact) => Method::Put;
+        delete (delete_exact) => Method::Delete;
+        connect (connect_exact) => Method::Connect;
+        options (options_exact) => Method::Options;
+        trace (trace_exact) => Method::Trace;
+        patch (patch_exact) => Method::Patch;
     }
 
     /// Can be used as a 404, but it's also repurposable as a catch-all!

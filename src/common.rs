@@ -121,8 +121,22 @@ impl DerefMut for HeadersBuilder {
 pub enum Method {
     /// GET
     Get,
+    /// HEAD
+    Head,
     /// POST
     Post,
+    /// PUT
+    Put,
+    /// DELETE
+    Delete,
+    /// CONNECT
+    Connect,
+    /// OPTIONS
+    Options,
+    /// TRACE
+    Trace,
+    /// PATCH
+    Patch,
     /// Used for custom methods
     Other(String),
 }
@@ -134,6 +148,12 @@ impl FromStr for Method {
         Ok(match s {
             "GET" => Self::Get,
             "POST" => Self::Post,
+            "PUT" => Self::Put,
+            "DELETE" => Self::Delete,
+            "CONNECT" => Self::Connect,
+            "OPTIONS" => Self::Options,
+            "TRACE" => Self::Trace,
+            "PATCH" => Self::Patch,
             other => Self::Other(other.to_string()),
         })
     }
