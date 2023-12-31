@@ -57,7 +57,6 @@ pub struct Server<'a> {
 
 // wild.
 unsafe impl<'a> Sync for Server<'a> {}
-unsafe impl<'a> Send for Server<'a> {}
 
 macro_rules! method_impl {
     ($($name: ident ($exact: ident) => $method: expr;)+) => {
