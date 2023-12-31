@@ -211,10 +211,10 @@ fn handler(req: &Request) -> Response {
             },
             IndexStyle::NotFound => not_found_handler_default(req),
             IndexStyle::IndexFile(ref filename) => {
-                let path = path.join(format!("{filename}"));
+                let path = path.join(filename);
 
                 if path.exists() && path.is_file() {
-                    let mime_type = MimeType::get_for_path(&path.to_str().unwrap_or(".txt"));
+                    let mime_type = MimeType::get_for_path(path.to_str().unwrap_or(".txt"));
                     match std::fs::read(path).map(String::from_utf8) {
                         Ok(Ok(file)) => Response::builder()
                             .status(200)

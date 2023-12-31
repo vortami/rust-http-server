@@ -9,8 +9,8 @@ use crate::{
 use std::{
     collections::HashMap,
     hash::{Hash, Hasher},
-    sync::Arc,
     thread,
+    time::Duration,
 };
 
 struct Route {
@@ -51,8 +51,8 @@ impl Hash for Route {
 #[derive(Default)]
 /// Simple server implementation
 pub struct Server<'a> {
-    routes: HashMap<Route, Arc<&'a Handler>>,
-    not_found_handler: Option<Arc<&'a Handler>>,
+    routes: HashMap<Route, &'a Handler>,
+    not_found_handler: Option<&'a Handler>,
 }
 
 // wild.
@@ -69,7 +69,7 @@ macro_rules! method_impl {
                         path: path.to_string(),
                         case_sensitive: false,
                     },
-                    Arc::new(handler),
+                    handler,
                 );
                 self
             }
@@ -81,7 +81,7 @@ macro_rules! method_impl {
                         path: path.to_string(),
                         case_sensitive: true,
                     },
-                    Arc::new(handler),
+                    handler,
                 );
                 self
             }
@@ -105,14 +105,14 @@ impl<'a> Server<'a> {
     ///
     /// Using this while not matching on anything else will catch every incoming request.
     pub fn not_found(mut self, handler: &'a Handler) -> Self {
-        self.not_found_handler = Some(Arc::new(handler));
+        self.not_found_handler = Some(handler);
         self
     }
 
     pub fn serve(self, address: &str, port: u16) -> ! {
         use std::net::TcpListener;
 
-        let listener = TcpListener::bind(format!("{address}:{port}")).unwrap();
+        let listener = TcpListener::bind(format!("{address}:{port}")).expect("Failed to bind");
 
         thread::scope(|scope| {
             for stream in listener.incoming() {
@@ -129,7 +129,9 @@ impl<'a> Server<'a> {
             }
         });
 
-        loop {}
+        loop {
+            thread::sleep(Duration::from_secs(u64::MAX))
+        }
     }
 
     pub fn handle(&self, req: &Request) -> Response {
