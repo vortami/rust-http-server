@@ -134,7 +134,6 @@ fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-const DIR: &str = "./public/";
 fn handler(req: &Request) -> Response {
     assert!(req.pathname.starts_with('/'));
 
