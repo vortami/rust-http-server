@@ -35,9 +35,9 @@ impl MimeType {
     /// # Examples
     /// ```
     /// # use rust_http_server::mime_types::MimeType;
-    /// assert_eq!(MimeType::get_for_path("txt"), "text/plain");
-    /// assert_eq!(MimeType::get_for_path("html"), "text/html");
-    /// assert_eq!(MimeType::get_for_path("png"), "image/png");
+    /// assert_eq!(MimeType::get_for_extension("txt"), "text/plain");
+    /// assert_eq!(MimeType::get_for_extension("html"), "text/html");
+    /// assert_eq!(MimeType::get_for_extension("png"), "image/png");
     /// ```
     pub fn get_for_extension(ext: &str) -> String {
         match ext.to_lowercase().as_str() {
@@ -59,7 +59,7 @@ impl MimeType {
     /// # Examples
     /// ```
     /// # use rust_http_server::mime_types::MimeType;
-    /// assert_eq!(MimeType::get_for_extension("./relative/file.png"), "image/png");
+    /// assert_eq!(MimeType::get_for_path("./relative/file.png"), "image/png");
     /// ```
     pub fn get_for_path(path: &str) -> String {
         let ext = match get_file_extension(path) {
